@@ -1,0 +1,354 @@
+<!-- create.html -->
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>資料維護 - 金山道院數位學習網</title>
+
+  <!-- Bootstrap 5.3.8 -->
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+  <!-- Font Awesome 7 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <!-- DataTables (Bootstrap5) -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/2.3.7/css/dataTables.bootstrap5.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/responsive/3.0.8/css/responsive.bootstrap5.css" rel="stylesheet">
+
+  <style>
+    body { background: #f8f9fa; }
+    .object-fit-cover { object-fit: cover; }
+    .req-star { color: #dc3545; margin-left: .25rem; }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
+    <div class="container">
+      <a class="navbar-brand fw-semibold" href="./index.html">
+        <i class="fa-solid fa-mountain-sun me-2"></i>金山道院數位學習網
+      </a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarMain">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+          <li class="nav-item">
+            <a class="nav-link" href="./index.html">
+              <i class="fa-solid fa-house me-1"></i>首頁
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="./create.html">
+              <i class="fa-solid fa-pen-to-square me-1"></i>資料維護
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    <!-- ✅ 第一區：2/3 表單、1/3 預覽 -->
+    <div class="row g-3 mb-3">
+      <!-- Form 2/3 -->
+      <div class="col-12 col-lg-8">
+        <div class="card shadow-sm">
+          <div class="card-header bg-white">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="fw-semibold">
+                <i class="fa-solid fa-file-circle-plus me-2 text-secondary"></i>新增 / 編輯課程
+              </div>
+              <button id="buttonReset" class="btn btn-light btn-sm" type="button">
+                <i class="fa-solid fa-eraser me-1"></i>清空
+              </button>
+            </div>
+          </div>
+
+          <div class="card-body">
+            <form id="courseForm" class="row g-3">
+              <input type="hidden" id="courseId">
+
+              <!-- 置頂 / 生成卡片（同一列兩欄） -->
+              <div class="col-12">
+                <div class="row g-2">
+                  <div class="col-12 col-md-6">
+                    <label class="form-label mb-1">
+                      <i class="fa-solid fa-thumbtack me-1 text-secondary"></i>置頂
+                    </label>
+                    <div class="d-flex gap-3">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="isPinned" id="isPinnedNo" value="0" checked>
+                        <label class="form-check-label" for="isPinnedNo">否</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="isPinned" id="isPinnedYes" value="1">
+                        <label class="form-check-label" for="isPinnedYes">是</label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-12 col-md-6">
+                    <label class="form-label mb-1">
+                      <i class="fa-solid fa-eye me-1 text-secondary"></i>生成卡片
+                    </label>
+                    <div class="d-flex gap-3">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="isVisible" id="isVisibleYes" value="1" checked>
+                        <label class="form-check-label" for="isVisibleYes">是</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="isVisible" id="isVisibleNo" value="0">
+                        <label class="form-check-label" for="isVisibleNo">否</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ✅ 圖片 URL（下拉 + 自訂） -->
+              <div class="col-12">
+                <label class="form-label">
+                  <i class="fa-regular fa-image me-1 text-secondary"></i>圖片 URL
+                </label>
+                <div class="row g-2">
+                  <div class="col-12 col-md-5">
+                    <select id="imageSelect" class="form-select">
+                      <option value="auto" selected>自動生成</option>
+                      <option value="./assets/山1.jpg">圖片1</option>
+                      <option value="custom">自訂 URL</option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-md-7">
+                    <input id="imageUrl" type="text" class="form-control d-none" placeholder="貼上圖片連結（不填也會自動生成）">
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">
+                  <i class="fa-solid fa-book-open me-1 text-secondary"></i>課程名稱 <span class="req-star">*</span>
+                </label>
+                <input id="courseTitle" type="text" class="form-control" required>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label">
+                  <i class="fa-solid fa-map-location-dot me-1 text-secondary"></i>地區 <span class="req-star">*</span>
+                </label>
+                <select id="areaName" class="form-select" required>
+                  <option value="">請選擇</option>
+                  <option value="高雄">高雄</option>
+                  <option value="屏東">屏東</option>
+                </select>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label">
+                  <i class="fa-solid fa-layer-group me-1 text-secondary"></i>班期名稱 <span class="req-star">*</span>
+                </label>
+                <select id="classNameSelect" class="form-select" required>
+                  <option value="">載入中...</option>
+                </select>
+              </div>
+
+              <div id="classNameOtherWrap" class="col-12 d-none">
+                <label class="form-label">
+                  <i class="fa-solid fa-plus me-1 text-secondary"></i>新增班期名稱 <span class="req-star">*</span>
+                </label>
+                <input id="classNameOther" type="text" class="form-control">
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">
+                  <i class="fa-regular fa-square-plus me-1 text-secondary"></i>子班期名稱
+                </label>
+                <input id="subClassName" type="text" class="form-control">
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label">
+                  <i class="fa-regular fa-calendar me-1 text-secondary"></i>課程日期 <span class="req-star">*</span>
+                </label>
+                <input id="courseDate" type="date" class="form-control" required>
+              </div>
+
+              <div class="col-6 col-md-3">
+                <label class="form-label">
+                  <i class="fa-regular fa-clock me-1 text-secondary"></i>開始時間 <span class="req-star">*</span>
+                </label>
+                <input id="startTime" type="time" class="form-control" required>
+              </div>
+
+              <div class="col-6 col-md-3">
+                <label class="form-label">
+                  <i class="fa-regular fa-clock me-1 text-secondary"></i>結束時間 <span class="req-star">*</span>
+                </label>
+                <input id="endTime" type="time" class="form-control" required>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">
+                  <i class="fa-solid fa-location-dot me-1 text-secondary"></i>課程地點 <span class="req-star">*</span>
+                </label>
+                <select id="courseLocation" class="form-select" required>
+                  <option value="">請選擇</option>
+                  <option value="高雄金山道院">高雄金山道院</option>
+                  <option value="高雄天慈佛堂">高雄天慈佛堂</option>
+                </select>
+              </div>
+
+              <div class="col-12 col-md-8">
+                <label class="form-label">
+                  <i class="fa-solid fa-user me-1 text-secondary"></i>主講者 <span class="req-star">*</span>
+                </label>
+                <input id="instructorName" type="text" class="form-control" required>
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label">
+                  <i class="fa-solid fa-id-badge me-1 text-secondary"></i>天職 <span class="req-star">*</span>
+                </label>
+                <select id="instructorTitle" class="form-select" required>
+                  <option value="">請選擇</option>
+                  <option value="點傳師">點傳師</option>
+                  <option value="講師">講師</option>
+                  <option value="壇主">壇主</option>
+                  <option value="人才">人才</option>
+                </select>
+              </div>
+
+              <!-- ✅ 檔名規則：移到「課程影片 URL」上方 -->
+              <div class="col-12">
+                <div class="alert alert-light border mb-0">
+                  <div class="fw-semibold mb-1">
+                    <i class="fa-solid fa-file-signature me-1 text-secondary"></i>檔名規則
+                  </div>
+                  <div class="small text-secondary">
+                    YYYY-MM-DD-地區班期名稱-子班期名稱(選填)-課程名稱-主講人天職
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">
+                  <i class="fa-solid fa-video me-1 text-secondary"></i>課程影片 URL
+                </label>
+                <input id="videoUrl" type="text" class="form-control">
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">
+                  <i class="fa-solid fa-microphone-lines me-1 text-secondary"></i>課程錄音
+                </label>
+                <div class="row g-2">
+                  <div class="col-12 col-md-4">
+                    <select id="audioMode" class="form-select">
+                      <option value="none" selected>無檔案</option>
+                      <option value="url">輸入 URL</option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-md-8">
+                    <input id="audioUrl" type="text" class="form-control d-none" placeholder="https://... 或 ./audio/xxx.mp3">
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label">
+                  <i class="fa-solid fa-file-arrow-down me-1 text-secondary"></i>課程資料
+                </label>
+                <div class="row g-2">
+                  <div class="col-12 col-md-4">
+                    <select id="materialMode" class="form-select">
+                      <option value="none" selected>無檔案</option>
+                      <option value="url">輸入 URL</option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-md-8">
+                    <input id="materialUrl" type="text" class="form-control d-none" placeholder="https://... 或 ./material/xxx.pdf">
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12 d-grid gap-2">
+                <button id="buttonSave" type="submit" class="btn btn-success">
+                  <i class="fa-solid fa-floppy-disk me-1"></i>儲存
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview 1/3 -->
+      <div class="col-12 col-lg-4">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-white fw-semibold">
+            <i class="fa-regular fa-id-card me-2 text-secondary"></i>卡片預覽
+          </div>
+          <div class="card-body">
+            <div id="previewCard"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ✅ 第二區：課程清單（留 icon；表頭單筆不需要 icon） -->
+    <div class="card shadow-sm">
+      <div class="card-header bg-white d-flex align-items-center justify-content-between">
+        <div class="fw-semibold">
+          <i class="fa-solid fa-table-list me-1"></i>課程清單
+        </div>
+        <span id="listInfo" class="small text-secondary"></span>
+      </div>
+
+      <div class="card-body">
+        <div class="table-responsive">
+          <table id="courseTable" class="table table-striped table-bordered dt-responsive nowrap">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>時間</th>
+                <th>班期名稱</th>
+                <th>課程名稱</th>
+                <th>主講人</th>
+                <th>課程地點</th>
+                <th>操作</th>
+                <th>置頂</th>
+                <th>生成卡片</th>
+                <th>影片URL</th>
+                <th>錄音URL</th>
+                <th>檔案URL</th>
+                <th>圖片URL</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div id="emptyList" class="text-center text-secondary py-4 d-none">
+          <i class="fa-regular fa-folder-open fa-2x mb-2"></i>
+          <div class="fw-semibold">目前沒有資料</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+
+  <!-- DataTables + Responsive -->
+  <script src="https://cdn.datatables.net/2.3.7/js/dataTables.js"></script>
+  <script src="https://cdn.datatables.net/2.3.7/js/dataTables.bootstrap5.js"></script>
+  <script src="https://cdn.datatables.net/responsive/3.0.8/js/dataTables.responsive.js"></script>
+  <script src="https://cdn.datatables.net/responsive/3.0.8/js/responsive.bootstrap5.js"></script>
+  
+  <script src="./badge.js"></script>
+  <script src="./card.js"></script>
+  <script src="./create.js"></script>
+</body>
+</html>
