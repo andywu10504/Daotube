@@ -1,10 +1,16 @@
-<!-- index.html -->
 <!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>金山道院數位學習網</title>
+
+  <meta name="theme-color" content="#198754" />
+  <meta name="description" content="金山道院數位學習網，提供課程瀏覽、搜尋與資料維護功能。" />
+
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
 
   <!-- Bootstrap 5.3.8 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -14,6 +20,12 @@
   <style>
     body { background: #f8f9fa; }
     .object-fit-cover { object-fit: cover; }
+
+    .install-bar {
+      position: sticky;
+      top: 56px;
+      z-index: 1020;
+    }
   </style>
 </head>
 
@@ -32,12 +44,12 @@
       <div class="collapse navbar-collapse" id="navbarMain">
         <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
           <li class="nav-item">
-            <a class="nav-link" href="./index.html">
+            <a class="nav-link active" aria-current="page" href="./index.html">
               <i class="fa-solid fa-house me-1"></i>首頁
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link active" aria-current="page" href="./create.html">
+            <a class="nav-link" href="./create.html">
               <i class="fa-solid fa-pen-to-square me-1"></i>資料維護
             </a>
           </li>
@@ -45,6 +57,24 @@
       </div>
     </div>
   </nav>
+
+  <!-- PWA 安裝提示 -->
+  <div id="installBar" class="install-bar bg-success-subtle border-bottom d-none">
+    <div class="container py-2 d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div class="small">
+        <i class="fa-solid fa-mobile-screen-button me-1"></i>
+        可將此網站安裝到桌面 / 主畫面，方便快速開啟。
+      </div>
+      <div class="d-flex gap-2">
+        <button id="buttonInstall" class="btn btn-success btn-sm" type="button">
+          <i class="fa-solid fa-download me-1"></i>安裝 App
+        </button>
+        <button id="buttonInstallClose" class="btn btn-outline-secondary btn-sm" type="button">
+          稍後
+        </button>
+      </div>
+    </div>
+  </div>
 
   <main class="container py-4">
     <!-- Filters -->
@@ -106,6 +136,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 
+  <script src="./pwa.js"></script>
   <script src="./badge.js"></script>
   <script src="./card.js"></script>
   <script src="./index.js"></script>
