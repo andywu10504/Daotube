@@ -1,4 +1,3 @@
-<!-- create.html -->
 <!doctype html>
 <html lang="zh-Hant">
 <head>
@@ -6,8 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>資料維護 - 金山道院數位學習網</title>
 
+  <meta name="theme-color" content="#198754" />
+  <meta name="description" content="金山道院數位學習網資料維護頁面。" />
+
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+
   <!-- Bootstrap 5.3.8 -->
-   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
   <!-- Font Awesome 7 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <!-- DataTables (Bootstrap5) -->
@@ -19,6 +25,12 @@
     body { background: #f8f9fa; }
     .object-fit-cover { object-fit: cover; }
     .req-star { color: #dc3545; margin-left: .25rem; }
+
+    .install-bar {
+      position: sticky;
+      top: 56px;
+      z-index: 1020;
+    }
   </style>
 </head>
 
@@ -50,10 +62,26 @@
     </div>
   </nav>
 
+  <!-- PWA 安裝提示 -->
+  <div id="installBar" class="install-bar bg-success-subtle border-bottom d-none">
+    <div class="container py-2 d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div class="small">
+        <i class="fa-solid fa-mobile-screen-button me-1"></i>
+        可將此網站安裝到桌面 / 主畫面，方便快速開啟。
+      </div>
+      <div class="d-flex gap-2">
+        <button id="buttonInstall" class="btn btn-success btn-sm" type="button">
+          <i class="fa-solid fa-download me-1"></i>安裝 App
+        </button>
+        <button id="buttonInstallClose" class="btn btn-outline-secondary btn-sm" type="button">
+          稍後
+        </button>
+      </div>
+    </div>
+  </div>
+
   <main class="container py-4">
-    <!-- ✅ 第一區：2/3 表單、1/3 預覽 -->
     <div class="row g-3 mb-3">
-      <!-- Form 2/3 -->
       <div class="col-12 col-lg-8">
         <div class="card shadow-sm">
           <div class="card-header bg-white">
@@ -71,7 +99,6 @@
             <form id="courseForm" class="row g-3">
               <input type="hidden" id="courseId">
 
-              <!-- 置頂 / 生成卡片（同一列兩欄） -->
               <div class="col-12">
                 <div class="row g-2">
                   <div class="col-12 col-md-6">
@@ -108,7 +135,6 @@
                 </div>
               </div>
 
-              <!-- ✅ 圖片 URL（下拉 + 自訂） -->
               <div class="col-12">
                 <label class="form-label">
                   <i class="fa-regular fa-image me-1 text-secondary"></i>圖片 URL
@@ -220,7 +246,6 @@
                 </select>
               </div>
 
-              <!-- ✅ 檔名規則：移到「課程影片 URL」上方 -->
               <div class="col-12">
                 <div class="alert alert-light border mb-0">
                   <div class="fw-semibold mb-1">
@@ -278,13 +303,11 @@
                   <i class="fa-solid fa-floppy-disk me-1"></i>儲存
                 </button>
               </div>
-
             </form>
           </div>
         </div>
       </div>
 
-      <!-- Preview 1/3 -->
       <div class="col-12 col-lg-4">
         <div class="card shadow-sm h-100">
           <div class="card-header bg-white fw-semibold">
@@ -297,7 +320,6 @@
       </div>
     </div>
 
-    <!-- ✅ 第二區：課程清單（留 icon；表頭單筆不需要 icon） -->
     <div class="card shadow-sm">
       <div class="card-header bg-white d-flex align-items-center justify-content-between">
         <div class="fw-semibold">
@@ -341,12 +363,12 @@
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 
-  <!-- DataTables + Responsive -->
   <script src="https://cdn.datatables.net/2.3.7/js/dataTables.js"></script>
   <script src="https://cdn.datatables.net/2.3.7/js/dataTables.bootstrap5.js"></script>
   <script src="https://cdn.datatables.net/responsive/3.0.8/js/dataTables.responsive.js"></script>
   <script src="https://cdn.datatables.net/responsive/3.0.8/js/responsive.bootstrap5.js"></script>
-  
+
+  <script src="./pwa.js"></script>
   <script src="./badge.js"></script>
   <script src="./card.js"></script>
   <script src="./create.js"></script>
