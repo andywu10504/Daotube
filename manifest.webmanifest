@@ -1,0 +1,53 @@
+{
+  "name": "金山道院數位學習網",
+  "short_name": "金山學習網",
+  "description": "提供課程瀏覽、搜尋與資料維護功能的數位學習網站。",
+  "lang": "zh-Hant",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8f9fa",
+  "theme_color": "#198754",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "./icons/maskable-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "./icons/maskable-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "首頁",
+      "url": "./index.html",
+      "description": "開啟課程首頁"
+    },
+    {
+      "name": "資料維護",
+      "url": "./create.html",
+      "description": "開啟資料維護頁面"
+    }
+  ]
+}
