@@ -151,32 +151,38 @@
     logInfo('教材欄位已清空');
   }
 
-  function buildAssetFileName(course, assetType) {
-    return window.AppConfig.buildAssetFileName(course, assetType);
+  function buildAssetFileName(course, assetType, currentValue) {
+    return window.AppConfig.buildAssetFileName(course, assetType, currentValue);
   }
 
   function syncMediaFileNamesByCourse(force) {
     var course = readFormCourse(false);
 
-    var videoFileName = buildAssetFileName(course, 'video');
-    var audioFileName = buildAssetFileName(course, 'audio');
-    var materialFileName = buildAssetFileName(course, 'material');
-
     var currentVideo = ($('#videoUrl').val() || '').trim();
     var currentAudio = ($('#audioUrl').val() || '').trim();
     var currentMaterial = ($('#materialUrl').val() || '').trim();
 
+    var videoFileName = buildAssetFileName(course, 'video', currentVideo);
+    var audioFileName = buildAssetFileName(course, 'audio', currentAudio);
+    var materialFileName = buildAssetFileName(course, 'material', currentMaterial);
+
     if (videoFileName && (force || !currentVideo || currentVideo === lastAutoVideoFileName)) {
       $('#videoUrl').val(videoFileName);
       lastAutoVideoFileName = videoFileName;
-      logInfo('課程影片檔名已自動帶入', videoFileName);
+      logInfo('課程影片檔名已自動帶入', {
+        fileName: videoFileName,
+        keptExtension: window.AppConfig.getPreferredExtension('video', currentVideo)
+      });
     }
 
     if (isUrlMode('#audioMode')) {
       if (audioFileName && (force || !currentAudio || currentAudio === lastAutoAudioFileName)) {
         $('#audioUrl').val(audioFileName);
         lastAutoAudioFileName = audioFileName;
-        logInfo('課程錄音檔名已自動帶入', audioFileName);
+        logInfo('課程錄音檔名已自動帶入', {
+          fileName: audioFileName,
+          keptExtension: window.AppConfig.getPreferredExtension('audio', currentAudio)
+        });
       }
     } else {
       clearAudioField();
@@ -186,7 +192,10 @@
       if (materialFileName && (force || !currentMaterial || currentMaterial === lastAutoMaterialFileName)) {
         $('#materialUrl').val(materialFileName);
         lastAutoMaterialFileName = materialFileName;
-        logInfo('課程資料檔名已自動帶入', materialFileName);
+        logInfo('課程資料檔名已自動帶入', {
+          fileName: materialFileName,
+          keptExtension: window.AppConfig.getPreferredExtension('material', currentMaterial)
+        });
       }
     } else {
       clearMaterialField();
@@ -310,7 +319,10 @@
       $('#audioMode').val('url');
       $('#audioUrl').removeClass('d-none').val(window.AppConfig.getDisplayOnlyFileName(course.audioUrl));
       lastAutoAudioFileName = window.AppConfig.getDisplayOnlyFileName(course.audioUrl || '');
-      logInfo('錄音欄位已帶入檔名', course.audioUrl);
+      logInfo('錄音欄位已帶入檔名', {
+        fileName: course.audioUrl,
+        extension: window.AppConfig.getFileExtension(course.audioUrl)
+      });
     } else {
       $('#audioMode').val('none');
       $('#audioUrl').addClass('d-none').val('');
@@ -322,7 +334,10 @@
       $('#materialMode').val('url');
       $('#materialUrl').removeClass('d-none').val(window.AppConfig.getDisplayOnlyFileName(course.materialUrl));
       lastAutoMaterialFileName = window.AppConfig.getDisplayOnlyFileName(course.materialUrl || '');
-      logInfo('教材欄位已帶入檔名', course.materialUrl);
+      logInfo('教材欄位已帶入檔名', {
+        fileName: course.materialUrl,
+        extension: window.AppConfig.getFileExtension(course.materialUrl)
+      });
     } else {
       $('#materialMode').val('none');
       $('#materialUrl').addClass('d-none').val('');
