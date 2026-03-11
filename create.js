@@ -2,28 +2,47 @@
 (function () {
   'use strict';
 
-  var dataUrl = './courses.json';
-  var videoBasePath = './video/';
-  var videoExtension = '.mp4';
-
   var courses = [];
-  var lastAutoVideoUrl = '';
+  var lastAutoVideoFileName = '';
+  var lastAutoAudioFileName = '';
+  var lastAutoMaterialFileName = '';
 
-  // ✅ 這次固定使用這個 picsum
-  var defaultPicsumUrl = 'https://picsum.photos/300/200';
+  function logInfo(step, data) {
+    if (!window.AppConfig || !window.AppConfig.isDebugMode) return;
+    if (data !== undefined) console.log('[create.js] ' + step, data);
+    else console.log('[create.js] ' + step);
+  }
+
+  function logWarn(step, data) {
+    if (!window.AppConfig || !window.AppConfig.isDebugMode) return;
+    if (data !== undefined) console.warn('[create.js] ' + step, data);
+    else console.warn('[create.js] ' + step);
+  }
+
+  function logError(step, data) {
+    if (!window.AppConfig || !window.AppConfig.isDebugMode) return;
+    if (data !== undefined) console.error('[create.js] ' + step, data);
+    else console.error('[create.js] ' + step);
+  }
 
   function cryptoRandomId() {
     try {
       if (window.crypto && crypto.getRandomValues) {
         var bytes = new Uint8Array(16);
         crypto.getRandomValues(bytes);
-        return Array.prototype.map.call(bytes, function (b) {
+        var id = Array.prototype.map.call(bytes, function (b) {
           return ('00' + b.toString(16)).slice(-2);
         }).join('');
+        logInfo('已產生隨機課程編號', id);
+        return id;
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      logWarn('使用 crypto 產生編號失敗，改用備援方式', e);
+    }
 
-    return 'id_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
+    var fallbackId = 'id_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
+    logInfo('已使用備援方式產生課程編號', fallbackId);
+    return fallbackId;
   }
 
   function escapeHtml(text) {
@@ -52,18 +71,22 @@
 
   function getRadioBool(name) {
     var val = $('input[name="' + name + '"]:checked').val();
-    return String(val) === '1';
+    var result = String(val) === '1';
+    logInfo('已讀取單選欄位：' + name, { rawValue: val, result: result });
+    return result;
   }
 
   function setRadioBool(name, value) {
     var v = value === true ? '1' : '0';
     $('input[name="' + name + '"][value="' + v + '"]').prop('checked', true);
+    logInfo('已設定單選欄位：' + name, { value: value, appliedValue: v });
   }
 
   function getClassNameValue() {
     var selected = ($('#classNameSelect').val() || '').trim();
-    if (selected === '其他') return ($('#classNameOther').val() || '').trim();
-    return selected;
+    var value = selected === '其他' ? ($('#classNameOther').val() || '').trim() : selected;
+    logInfo('已讀取班期名稱', { selected: selected, value: value });
+    return value;
   }
 
   function setClassNameValue(value) {
@@ -74,14 +97,17 @@
       $('#classNameSelect').val(value);
       $('#classNameOtherWrap').addClass('d-none');
       $('#classNameOther').val('');
+      logInfo('班期名稱已套用既有選項', value);
     } else if (value) {
       $('#classNameSelect').val('其他');
       $('#classNameOtherWrap').removeClass('d-none');
       $('#classNameOther').val(value);
+      logInfo('班期名稱已套用自訂內容', value);
     } else {
       $('#classNameSelect').val('');
       $('#classNameOtherWrap').addClass('d-none');
       $('#classNameOther').val('');
+      logInfo('班期名稱已清空');
     }
   }
 
@@ -101,155 +127,236 @@
       $select.append('<option value="' + escapeHtml(name) + '">' + escapeHtml(name) + '</option>');
     });
     $select.append('<option value="其他">其他（新增）</option>');
+
+    logInfo('班期名稱下拉選單已重建', { count: list.length, list: list });
   }
 
-  function buildFileName(course) {
-    var date = (course.courseDate || '').trim();
-    var area = (course.areaName || '').trim();
-    var className = (course.className || '').trim();
-    var subClassName = (course.subClassName || '').trim();
-    var title = (course.courseTitle || '').trim();
-    var instructor = ((course.instructorName || '') + (course.instructorTitle || '')).trim();
-
-    var areaClass = (area + className).trim();
-    var parts = [];
-
-    if (date) parts.push(date);
-    if (areaClass) parts.push(areaClass);
-    if (subClassName) parts.push(subClassName);
-    if (title) parts.push(title);
-    if (instructor) parts.push(instructor);
-
-    return parts.join('-');
+  function getModeValue(selector) {
+    return ($(selector).val() || '').trim();
   }
 
-  function syncVideoUrlByFileName(force) {
-    var course = readFormCourse(false); // 這裡不要因圖片自動生成而影響判斷
-    var fileName = buildFileName(course);
-    if (!fileName) return;
+  function isUrlMode(selector) {
+    return getModeValue(selector) === 'url';
+  }
 
-    var nextAuto = videoBasePath + fileName + videoExtension;
-    var current = ($('#videoUrl').val() || '').trim();
+  function clearAudioField() {
+    $('#audioUrl').val('');
+    lastAutoAudioFileName = '';
+    logInfo('錄音欄位已清空');
+  }
 
-    if (force || !current || current === lastAutoVideoUrl) {
-      $('#videoUrl').val(nextAuto);
-      lastAutoVideoUrl = nextAuto;
+  function clearMaterialField() {
+    $('#materialUrl').val('');
+    lastAutoMaterialFileName = '';
+    logInfo('教材欄位已清空');
+  }
+
+  function buildAssetFileName(course, assetType) {
+    return window.AppConfig.buildAssetFileName(course, assetType);
+  }
+
+  function syncMediaFileNamesByCourse(force) {
+    var course = readFormCourse(false);
+
+    var videoFileName = buildAssetFileName(course, 'video');
+    var audioFileName = buildAssetFileName(course, 'audio');
+    var materialFileName = buildAssetFileName(course, 'material');
+
+    var currentVideo = ($('#videoUrl').val() || '').trim();
+    var currentAudio = ($('#audioUrl').val() || '').trim();
+    var currentMaterial = ($('#materialUrl').val() || '').trim();
+
+    if (videoFileName && (force || !currentVideo || currentVideo === lastAutoVideoFileName)) {
+      $('#videoUrl').val(videoFileName);
+      lastAutoVideoFileName = videoFileName;
+      logInfo('課程影片檔名已自動帶入', videoFileName);
+    }
+
+    if (isUrlMode('#audioMode')) {
+      if (audioFileName && (force || !currentAudio || currentAudio === lastAutoAudioFileName)) {
+        $('#audioUrl').val(audioFileName);
+        lastAutoAudioFileName = audioFileName;
+        logInfo('課程錄音檔名已自動帶入', audioFileName);
+      }
+    } else {
+      clearAudioField();
+    }
+
+    if (isUrlMode('#materialMode')) {
+      if (materialFileName && (force || !currentMaterial || currentMaterial === lastAutoMaterialFileName)) {
+        $('#materialUrl').val(materialFileName);
+        lastAutoMaterialFileName = materialFileName;
+        logInfo('課程資料檔名已自動帶入', materialFileName);
+      }
+    } else {
+      clearMaterialField();
     }
   }
 
   function applyUrlMode(modeSelectId, inputId) {
-    var mode = ($(modeSelectId).val() || '').trim();
-    if (mode === 'url') $(inputId).removeClass('d-none');
-    else $(inputId).addClass('d-none').val('');
+    var mode = getModeValue(modeSelectId);
+
+    if (mode === 'url') {
+      $(inputId).removeClass('d-none');
+      logInfo('已切換為顯示檔名欄位', { modeSelectId: modeSelectId, inputId: inputId });
+      syncMediaFileNamesByCourse(true);
+    } else {
+      $(inputId).addClass('d-none').val('');
+      logInfo('已切換為不使用此資源，並清空欄位', { modeSelectId: modeSelectId, inputId: inputId });
+
+      if (inputId === '#audioUrl') clearAudioField();
+      if (inputId === '#materialUrl') clearMaterialField();
+    }
+
     renderPreview();
   }
 
-  // ✅ 圖片 URL 規則：
-  // - 自動生成：picsum 300/200
-  // - 圖片1：./assets/山1.jpg
-  // - 自訂 URL：有值用自訂；無值也用 picsum 300/200
   function getResolvedImageUrl() {
     var sel = ($('#imageSelect').val() || '').trim();
 
     if (sel === 'custom') {
       var custom = ($('#imageUrl').val() || '').trim();
-      return custom ? custom : defaultPicsumUrl;
+      var resolvedCustom = custom ? custom : window.AppConfig.defaultImageUrl;
+      logInfo('圖片來源為自訂網址', { input: custom, resolved: resolvedCustom });
+      return resolvedCustom;
     }
 
-    if (sel === 'auto' || !sel) return defaultPicsumUrl;
-    return sel; // 例如 ./assets/山1.jpg
+    if (sel === 'auto' || !sel) {
+      logInfo('圖片來源為自動預設圖', window.AppConfig.defaultImageUrl);
+      return window.AppConfig.defaultImageUrl;
+    }
+
+    if (window.AppConfig.isAbsoluteOrSpecialUrl(sel)) {
+      logInfo('圖片來源為絕對或特殊路徑', sel);
+      return sel;
+    }
+
+    var resolved = window.AppConfig.resolveImageUrl(sel);
+    logInfo('圖片來源為 assets/image 路徑', { fileName: sel, resolved: resolved });
+    return resolved;
   }
 
-  // allowAutoImage=true：把圖片依規則補滿（用於儲存/預覽）
-  // allowAutoImage=false：不強制補滿（用於影片檔名判斷時避免隨時間變動）
   function readFormCourse(allowAutoImage) {
     var imageUrl = '';
     if (allowAutoImage !== false) imageUrl = getResolvedImageUrl();
 
-    return {
+    var videoUrl = window.AppConfig.getDisplayOnlyFileName($('#videoUrl').val());
+    var audioUrl = isUrlMode('#audioMode') ? window.AppConfig.getDisplayOnlyFileName($('#audioUrl').val()) : '';
+    var materialUrl = isUrlMode('#materialMode') ? window.AppConfig.getDisplayOnlyFileName($('#materialUrl').val()) : '';
+
+    var course = {
       id: ($('#courseId').val() || '').trim(),
-
       imageUrl: imageUrl,
-
       courseTitle: ($('#courseTitle').val() || '').trim(),
-
       areaName: ($('#areaName').val() || '').trim(),
       className: getClassNameValue(),
       subClassName: ($('#subClassName').val() || '').trim(),
-
       courseDate: ($('#courseDate').val() || '').trim(),
       startTime: ($('#startTime').val() || '').trim(),
       endTime: ($('#endTime').val() || '').trim(),
       courseLocation: ($('#courseLocation').val() || '').trim(),
-
       instructorName: ($('#instructorName').val() || '').trim(),
       instructorTitle: ($('#instructorTitle').val() || '').trim(),
-
-      videoUrl: ($('#videoUrl').val() || '').trim(),
-      audioUrl: ($('#audioUrl').val() || '').trim(),
-      materialUrl: ($('#materialUrl').val() || '').trim(),
-
+      videoUrl: videoUrl,
+      audioUrl: audioUrl,
+      materialUrl: materialUrl,
       isPinned: getRadioBool('isPinned'),
       isVisible: getRadioBool('isVisible')
     };
+
+    logInfo('已讀取表單資料', { allowAutoImage: allowAutoImage, course: course });
+    return course;
   }
 
   function writeFormCourse(course) {
+    logInfo('開始回填表單資料', course);
+
     $('#courseId').val(course.id || '');
 
     var imageUrl = (course.imageUrl || '').trim();
+    var imageFileName = window.AppConfig.getDisplayOnlyFileName(imageUrl);
     var $imageSelect = $('#imageSelect');
     var options = $imageSelect.find('option').map(function () { return $(this).val(); }).get();
 
-    if (!imageUrl || imageUrl === defaultPicsumUrl) {
+    if (!imageUrl || imageUrl === window.AppConfig.defaultImageUrl) {
       $imageSelect.val('auto');
       $('#imageUrl').addClass('d-none').val('');
-    } else if (options.indexOf(imageUrl) >= 0) {
-      $imageSelect.val(imageUrl);
+      logInfo('圖片欄位已套用自動預設圖');
+    } else if (options.indexOf(imageFileName) >= 0) {
+      $imageSelect.val(imageFileName);
       $('#imageUrl').addClass('d-none').val('');
+      logInfo('圖片欄位已套用固定選項', imageFileName);
     } else {
       $imageSelect.val('custom');
       $('#imageUrl').removeClass('d-none').val(imageUrl);
+      logInfo('圖片欄位已套用自訂網址', imageUrl);
     }
 
     $('#courseTitle').val(course.courseTitle || '');
-
     $('#areaName').val(course.areaName || '');
     setClassNameValue(course.className || '');
     $('#subClassName').val(course.subClassName || '');
-
     $('#courseDate').val(course.courseDate || '');
     $('#startTime').val(course.startTime || '');
     $('#endTime').val(course.endTime || '');
     $('#courseLocation').val(course.courseLocation || '');
-
     $('#instructorName').val(course.instructorName || '');
     $('#instructorTitle').val(course.instructorTitle || '');
 
+    $('#videoUrl').val(window.AppConfig.getDisplayOnlyFileName(course.videoUrl || ''));
+    lastAutoVideoFileName = window.AppConfig.getDisplayOnlyFileName(course.videoUrl || '');
+
     if ((course.audioUrl || '').trim()) {
       $('#audioMode').val('url');
-      $('#audioUrl').removeClass('d-none').val(course.audioUrl || '');
+      $('#audioUrl').removeClass('d-none').val(window.AppConfig.getDisplayOnlyFileName(course.audioUrl));
+      lastAutoAudioFileName = window.AppConfig.getDisplayOnlyFileName(course.audioUrl || '');
+      logInfo('錄音欄位已帶入檔名', course.audioUrl);
     } else {
       $('#audioMode').val('none');
       $('#audioUrl').addClass('d-none').val('');
+      lastAutoAudioFileName = '';
+      logInfo('錄音欄位已清空');
     }
 
     if ((course.materialUrl || '').trim()) {
       $('#materialMode').val('url');
-      $('#materialUrl').removeClass('d-none').val(course.materialUrl || '');
+      $('#materialUrl').removeClass('d-none').val(window.AppConfig.getDisplayOnlyFileName(course.materialUrl));
+      lastAutoMaterialFileName = window.AppConfig.getDisplayOnlyFileName(course.materialUrl || '');
+      logInfo('教材欄位已帶入檔名', course.materialUrl);
     } else {
       $('#materialMode').val('none');
       $('#materialUrl').addClass('d-none').val('');
+      lastAutoMaterialFileName = '';
+      logInfo('教材欄位已清空');
     }
-
-    $('#videoUrl').val(course.videoUrl || '');
-    lastAutoVideoUrl = (course.videoUrl || '').trim();
 
     setRadioBool('isPinned', course.isPinned === true);
     setRadioBool('isVisible', course.isVisible !== false);
+
+    logInfo('表單回填完成');
+  }
+
+  function toPreviewCourse(course) {
+    var previewCourse = $.extend({}, course);
+
+    previewCourse.videoUrl = course.videoUrl
+      ? window.AppConfig.resolveCourseAssetUrl('video', course.videoUrl, course)
+      : '';
+
+    previewCourse.audioUrl = course.audioUrl
+      ? window.AppConfig.resolveCourseAssetUrl('audio', course.audioUrl, course)
+      : '';
+
+    previewCourse.materialUrl = course.materialUrl
+      ? window.AppConfig.resolveCourseAssetUrl('material', course.materialUrl, course)
+      : '';
+
+    return previewCourse;
   }
 
   function resetForm() {
+    logInfo('開始重設表單');
+
     writeFormCourse({
       id: '',
       imageUrl: '',
@@ -270,8 +377,12 @@
       isVisible: true
     });
 
-    lastAutoVideoUrl = '';
+    lastAutoVideoFileName = '';
+    lastAutoAudioFileName = '';
+    lastAutoMaterialFileName = '';
+
     renderPreview();
+    logInfo('表單已重設完成');
   }
 
   function validateCourse(course) {
@@ -290,49 +401,61 @@
     var course = readFormCourse(true);
     if (!course.id) course.id = 'preview';
 
-    var previewCourse = course;
+    var previewCourse = toPreviewCourse(course);
+
     if (window.BadgeService) {
-      previewCourse = window.BadgeService.applyBadges([course], { latestDays: 30 })[0];
+      previewCourse = window.BadgeService.applyBadges([previewCourse], { latestDays: 30 })[0];
+      logInfo('預覽卡片已套用徽章規則', previewCourse);
+    } else {
+      logInfo('找不到 BadgeService，預覽卡片略過徽章處理');
     }
 
     var cardHtml = window.CardRenderer.renderCourseCard(previewCourse);
     $('#previewCard').html(cardHtml);
+
+    logInfo('預覽卡片已重新渲染', previewCourse);
   }
 
   function destroyDataTableIfNeeded() {
     if ($.fn.DataTable && $.fn.DataTable.isDataTable('#courseTable')) {
       $('#courseTable').DataTable().destroy();
+      logInfo('已銷毀舊的 DataTable');
     }
   }
 
   function initDataTable() {
-    if (!$.fn.DataTable) return;
+    if (!$.fn.DataTable) {
+      logWarn('找不到 DataTable，略過表格初始化');
+      return;
+    }
 
     $('#courseTable').DataTable({
       pageLength: 10,
       lengthMenu: [10, 25, 50, 100],
       responsive: true,
-      order: [[0, 'desc'], [1, 'desc']], // ✅ 日期 desc，再時間 desc
+      order: [[0, 'desc'], [1, 'desc']],
       columnDefs: [
-        { targets: 0, responsivePriority: 2 }, // 日期
-        { targets: 1, responsivePriority: 3 }, // 時間
-        { targets: 2, responsivePriority: 5 }, // 班期名稱
-        { targets: 3, responsivePriority: 4 }, // 課程名稱
-        { targets: 4, responsivePriority: 6 }, // 主講人
-        { targets: 5, responsivePriority: 7 }, // 課程地點（顯示）
-        { targets: 6, responsivePriority: 1 }, // 操作（顯示）
-        { targets: 7, responsivePriority: 8 },  // 置頂
-        { targets: 8, responsivePriority: 9 },  // 生成卡片
-        { targets: 9, responsivePriority: 10 },  // 影片URL
-        { targets: 10, responsivePriority: 11 }, // 錄音URL
-        { targets: 11, responsivePriority: 12 }, // 檔案URL
-        { targets: 12, responsivePriority: 13 }  // 圖片URL
+        { targets: 0, responsivePriority: 2 },
+        { targets: 1, responsivePriority: 3 },
+        { targets: 2, responsivePriority: 5 },
+        { targets: 3, responsivePriority: 4 },
+        { targets: 4, responsivePriority: 6 },
+        { targets: 5, responsivePriority: 7 },
+        { targets: 6, responsivePriority: 1 },
+        { targets: 7, responsivePriority: 8 },
+        { targets: 8, responsivePriority: 9 },
+        { targets: 9, responsivePriority: 10 },
+        { targets: 10, responsivePriority: 11 },
+        { targets: 11, responsivePriority: 12 },
+        { targets: 12, responsivePriority: 13 }
       ]
     });
+
+    logInfo('DataTable 初始化完成');
   }
 
   function sortCoursesForTable(list) {
-    return list.slice().sort(function (a, b) {
+    var sorted = list.slice().sort(function (a, b) {
       var ap = a && a.isPinned === true ? 1 : 0;
       var bp = b && b.isPinned === true ? 1 : 0;
       if (bp !== ap) return bp - ap;
@@ -347,6 +470,9 @@
 
       return String(b.id || '').localeCompare(String(a.id || ''));
     });
+
+    logInfo('課程資料已完成排序', { count: sorted.length });
+    return sorted;
   }
 
   function renderList() {
@@ -363,11 +489,9 @@
       var st = (c.startTime || '').trim();
       var et = (c.endTime || '').trim();
 
-      // ✅ 對應 DataTables 兩欄：日期、時間
       var dateText = ymd || '';
       var timeText = (st && et) ? (st + '-' + et) : (st || '');
 
-      // ✅ 讓 DataTables 排序更準：日期欄用 YYYYMMDD，時間欄用 HHMM
       var dateOrder = toYmdNumber(ymd);
       var timeOrder = toHmNumber(st);
 
@@ -377,22 +501,14 @@
 
       var instructorDisplay = ((c.instructorName || '') + (c.instructorTitle || '')).trim();
 
-      // ✅ 這裡一定要輸出 13 個 <td>，跟 <thead> 完全對齊
       var rowHtml =
         '<tr>' +
-          // 0 日期
           '<td data-order="' + escapeHtml(dateOrder == null ? '' : String(dateOrder)) + '">' + escapeHtml(dateText) + '</td>' +
-          // 1 時間
           '<td data-order="' + escapeHtml(timeOrder == null ? '' : String(timeOrder)) + '">' + escapeHtml(timeText) + '</td>' +
-          // 2 班期名稱
           '<td>' + escapeHtml(classText) + '</td>' +
-          // 3 課程名稱
           '<td>' + escapeHtml(c.courseTitle || '') + '</td>' +
-          // 4 主講人
           '<td>' + escapeHtml(instructorDisplay) + '</td>' +
-          // 5 課程地點
           '<td>' + escapeHtml(c.courseLocation || '') + '</td>' +
-          // 6 操作
           '<td>' +
             '<div class="d-flex gap-2">' +
               '<button class="btn btn-secondary btn-sm js-edit" data-id="' + escapeHtml(c.id) + '" type="button">' +
@@ -403,17 +519,11 @@
               '</button>' +
             '</div>' +
           '</td>' +
-          // 7 置頂
           '<td>' + (c.isPinned === true ? '是' : '否') + '</td>' +
-          // 8 生成卡片
           '<td>' + (c.isVisible === false ? '否' : '是') + '</td>' +
-          // 9 影片URL
           '<td>' + escapeHtml(c.videoUrl || '') + '</td>' +
-          // 10 錄音URL
           '<td>' + escapeHtml(c.audioUrl || '') + '</td>' +
-          // 11 檔案URL
           '<td>' + escapeHtml(c.materialUrl || '') + '</td>' +
-          // 12 圖片URL
           '<td>' + escapeHtml(c.imageUrl || '') + '</td>' +
         '</tr>';
 
@@ -422,34 +532,67 @@
 
     destroyDataTableIfNeeded();
     if (courses.length > 0) initDataTable();
+
+    logInfo('課程清單已重新渲染', { count: courses.length, sorted: sorted });
+  }
+
+  function normalizeCourseAfterLoad(course) {
+    var item = $.extend({}, course);
+
+    item.videoUrl = window.AppConfig.getDisplayOnlyFileName(item.videoUrl || '');
+    item.audioUrl = window.AppConfig.getDisplayOnlyFileName(item.audioUrl || '');
+    item.materialUrl = window.AppConfig.getDisplayOnlyFileName(item.materialUrl || '');
+
+    return item;
   }
 
   function upsertCourse(course) {
     if (!course.id) {
       course.id = cryptoRandomId();
       courses.unshift(course);
+      logInfo('已新增課程資料', course);
       return;
     }
 
     var idx = courses.findIndex(function (x) { return x.id === course.id; });
-    if (idx >= 0) courses[idx] = course;
-    else courses.unshift(course);
+    if (idx >= 0) {
+      courses[idx] = course;
+      logInfo('已更新課程資料', { index: idx, course: course });
+    } else {
+      courses.unshift(course);
+      logInfo('找不到原資料，已改為新增課程', course);
+    }
   }
 
   function deleteCourse(id) {
+    var before = courses.length;
     courses = courses.filter(function (c) { return c.id !== id; });
+    var after = courses.length;
+
+    if (before === after) logWarn('刪除課程時找不到指定編號', id);
+    else logInfo('已刪除課程資料', { id: id, before: before, after: after });
   }
 
   function loadCoursesFromJson(done) {
-    $.getJSON(dataUrl)
+    logInfo('開始載入課程 JSON', window.AppConfig.dataUrl);
+
+    $.getJSON(window.AppConfig.dataUrl)
       .done(function (data) {
-        courses = Array.isArray(data) ? data.slice() : [];
+        courses = Array.isArray(data) ? data.map(normalizeCourseAfterLoad) : [];
+        logInfo('課程 JSON 載入成功', { count: courses.length, data: courses });
+
         buildClassOptionsFromCourses();
         renderList();
         done();
       })
-      .fail(function () {
+      .fail(function (xhr, textStatus, errorThrown) {
         courses = [];
+        logError('課程 JSON 載入失敗，改用空清單', {
+          textStatus: textStatus,
+          errorThrown: errorThrown,
+          xhr: xhr
+        });
+
         buildClassOptionsFromCourses();
         renderList();
         done();
@@ -457,95 +600,181 @@
   }
 
   function bindEvents() {
+    logInfo('開始綁定畫面事件');
+
     $('#imageSelect').on('change', function () {
       var v = ($('#imageSelect').val() || '').trim();
-      if (v === 'custom') $('#imageUrl').removeClass('d-none');
-      else $('#imageUrl').addClass('d-none').val('');
+      logInfo('圖片選項已變更', v);
+
+      if (v === 'custom') {
+        $('#imageUrl').removeClass('d-none');
+      } else {
+        $('#imageUrl').addClass('d-none').val('');
+      }
+
       renderPreview();
     });
-    $('#imageUrl').on('input', renderPreview);
+
+    $('#imageUrl').on('input', function () {
+      logInfo('圖片網址已輸入', ($('#imageUrl').val() || '').trim());
+      renderPreview();
+    });
 
     $('#classNameSelect').on('change', function () {
       var val = ($('#classNameSelect').val() || '').trim();
+      logInfo('班期下拉選單已變更', val);
+
       if (val === '其他') $('#classNameOtherWrap').removeClass('d-none');
       else $('#classNameOtherWrap').addClass('d-none');
 
-      syncVideoUrlByFileName(false);
+      syncMediaFileNamesByCourse(false);
       renderPreview();
     });
 
     $('#classNameOther').on('input', function () {
-      syncVideoUrlByFileName(false);
+      logInfo('自訂班期名稱已輸入', ($('#classNameOther').val() || '').trim());
+      syncMediaFileNamesByCourse(false);
       renderPreview();
     });
 
-    $('input[name="isPinned"], input[name="isVisible"]').on('change', renderPreview);
+    $('input[name="isPinned"], input[name="isVisible"]').on('change', function () {
+      logInfo('顯示設定已變更', {
+        isPinned: $('input[name="isPinned"]:checked').val(),
+        isVisible: $('input[name="isVisible"]:checked').val()
+      });
+      renderPreview();
+    });
 
     $('#courseDate, #areaName, #subClassName, #courseTitle, #instructorName, #instructorTitle')
       .on('input change', function () {
-        syncVideoUrlByFileName(false);
+        logInfo('課程基本欄位已變更', {
+          id: this.id,
+          value: $(this).val()
+        });
+        syncMediaFileNamesByCourse(false);
         renderPreview();
       });
 
-    $('#startTime, #endTime, #courseLocation, #videoUrl').on('input change', renderPreview);
+    $('#startTime, #endTime, #courseLocation').on('input change', function () {
+      logInfo('課程時間或地點欄位已變更', {
+        id: this.id,
+        value: $(this).val()
+      });
+      renderPreview();
+    });
 
-    $('#audioMode').on('change', function () { applyUrlMode('#audioMode', '#audioUrl'); });
-    $('#materialMode').on('change', function () { applyUrlMode('#materialMode', '#materialUrl'); });
+    $('#videoUrl').on('input change', function () {
+      logInfo('課程影片檔名已變更', ($(this).val() || '').trim());
+      renderPreview();
+    });
 
-    $('#audioUrl, #materialUrl').on('input', renderPreview);
+    $('#audioMode').on('change', function () {
+      logInfo('錄音模式已切換', getModeValue('#audioMode'));
+      applyUrlMode('#audioMode', '#audioUrl');
+    });
 
-    $('#buttonReset').on('click', resetForm);
+    $('#materialMode').on('change', function () {
+      logInfo('教材模式已切換', getModeValue('#materialMode'));
+      applyUrlMode('#materialMode', '#materialUrl');
+    });
+
+    $('#audioUrl').on('input change', function () {
+      logInfo('錄音檔名欄位已輸入', {
+        id: this.id,
+        value: $(this).val()
+      });
+      renderPreview();
+    });
+
+    $('#materialUrl').on('input change', function () {
+      logInfo('教材檔名欄位已輸入', {
+        id: this.id,
+        value: $(this).val()
+      });
+      renderPreview();
+    });
+
+    $('#buttonReset').on('click', function () {
+      logInfo('使用者點了重設按鈕');
+      resetForm();
+    });
 
     $('#courseForm').on('submit', function (e) {
       e.preventDefault();
+      logInfo('使用者送出表單');
 
-      syncVideoUrlByFileName(false);
+      syncMediaFileNamesByCourse(false);
 
       var course = readFormCourse(true);
-      course.videoUrl = ($('#videoUrl').val() || '').trim();
-
       var error = validateCourse(course);
+
       if (error) {
+        logWarn('表單驗證未通過', { error: error, course: course });
         alert(error);
         return;
       }
 
       upsertCourse(course);
-
       buildClassOptionsFromCourses();
       renderList();
       resetForm();
 
+      logInfo('課程資料已儲存完成', course);
       alert('已儲存');
     });
 
     $('#courseTable').on('click', '.js-edit', function () {
       var id = $(this).data('id');
+      logInfo('使用者點了編輯', id);
+
       var found = courses.find(function (c) { return c.id === id; });
-      if (!found) return;
+      if (!found) {
+        logWarn('編輯失敗：找不到課程資料', id);
+        return;
+      }
 
       writeFormCourse(found);
-      syncVideoUrlByFileName(false);
+      syncMediaFileNamesByCourse(false);
       renderPreview();
       window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      logInfo('已載入課程資料到表單', found);
     });
 
     $('#courseTable').on('click', '.js-delete', function () {
       var id = $(this).data('id');
-      if (!confirm('確定要刪除這筆資料？')) return;
+      logInfo('使用者點了刪除', id);
+
+      if (!confirm('確定要刪除這筆資料？')) {
+        logInfo('使用者取消刪除');
+        return;
+      }
 
       deleteCourse(id);
       buildClassOptionsFromCourses();
       renderList();
 
-      if (($('#courseId').val() || '').trim() === id) resetForm();
+      if (($('#courseId').val() || '').trim() === id) {
+        logInfo('目前表單正好是被刪除的資料，準備重設表單');
+        resetForm();
+      }
     });
+
+    logInfo('畫面事件綁定完成');
   }
 
   $(function () {
+    logInfo('頁面初始化開始', {
+      dataUrl: window.AppConfig.dataUrl,
+      dataBase: window.AppConfig.paths.dataBase,
+      imageBase: window.AppConfig.paths.imageBase
+    });
+
     bindEvents();
     loadCoursesFromJson(function () {
+      logInfo('課程資料載入流程完成，準備重設表單');
       resetForm();
+      logInfo('頁面初始化完成');
     });
   });
 })();
