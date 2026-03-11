@@ -117,14 +117,6 @@
     return parts.join('-');
   }
 
-  function buildAssetFileName(course, assetType) {
-    var extension = AppConfig.assetExtensions[assetType] || '';
-    var baseFileName = buildBaseFileName(course);
-
-    if (!baseFileName) return '';
-    return baseFileName + extension;
-  }
-
   function getDisplayOnlyFileName(value) {
     var text = normalizeText(value);
     if (!text) return '';
@@ -135,6 +127,41 @@
     }
 
     return text;
+  }
+
+  function getFileExtension(value) {
+    var fileName = getDisplayOnlyFileName(value);
+    if (!fileName) return '';
+
+    var lastDot = fileName.lastIndexOf('.');
+    if (lastDot <= 0 || lastDot === fileName.length - 1) return '';
+
+    return fileName.substring(lastDot).toLowerCase();
+  }
+
+  function removeFileExtension(value) {
+    var fileName = getDisplayOnlyFileName(value);
+    if (!fileName) return '';
+
+    var lastDot = fileName.lastIndexOf('.');
+    if (lastDot <= 0) return fileName;
+
+    return fileName.substring(0, lastDot);
+  }
+
+  function getPreferredExtension(assetType, currentValue) {
+    var currentExtension = getFileExtension(currentValue);
+    if (currentExtension) return currentExtension;
+
+    return AppConfig.assetExtensions[assetType] || '';
+  }
+
+  function buildAssetFileName(course, assetType, currentValue) {
+    var extension = getPreferredExtension(assetType, currentValue);
+    var baseFileName = buildBaseFileName(course);
+
+    if (!baseFileName) return '';
+    return baseFileName + extension;
   }
 
   function resolveCourseAssetUrl(assetType, value, course) {
@@ -175,8 +202,11 @@
   AppConfig.getClassFolderName = getClassFolderName;
   AppConfig.getCourseFolderPath = getCourseFolderPath;
   AppConfig.buildBaseFileName = buildBaseFileName;
-  AppConfig.buildAssetFileName = buildAssetFileName;
   AppConfig.getDisplayOnlyFileName = getDisplayOnlyFileName;
+  AppConfig.getFileExtension = getFileExtension;
+  AppConfig.removeFileExtension = removeFileExtension;
+  AppConfig.getPreferredExtension = getPreferredExtension;
+  AppConfig.buildAssetFileName = buildAssetFileName;
   AppConfig.resolveCourseAssetUrl = resolveCourseAssetUrl;
   AppConfig.resolveImageUrl = resolveImageUrl;
 
