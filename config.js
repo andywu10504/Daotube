@@ -19,7 +19,7 @@
       material: '.pdf'
     },
 
-    defaultImageUrl: 'https://picsum.photos/300/200'
+    defaultImageUrl: 'https://picsum.photos/200/300'
   };
 
   function log(step, data) {
