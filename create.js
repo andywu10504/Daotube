@@ -6,6 +6,7 @@
   var lastAutoVideoFileName = '';
   var lastAutoAudioFileName = '';
   var lastAutoMaterialFileName = '';
+  var lastUploadedImageUrl = '';
 
   function logInfo(step, data) {
     if (!window.AppConfig || !window.AppConfig.isDebugMode) return;
@@ -202,15 +203,16 @@
     }
   }
 
-  function applyUrlMode(modeSelectId, inputId) {
+  function applyUrlMode(modeSelectId, inputId, groupId) {
     var mode = getModeValue(modeSelectId);
 
     if (mode === 'url') {
-      $(inputId).removeClass('d-none');
+      $(groupId).removeClass('d-none');
       logInfo('已切換為顯示檔名欄位', { modeSelectId: modeSelectId, inputId: inputId });
       syncMediaFileNamesByCourse(true);
     } else {
-      $(inputId).addClass('d-none').val('');
+      $(groupId).addClass('d-none');
+      $(inputId).val('');
       logInfo('已切換為不使用此資源，並清空欄位', { modeSelectId: modeSelectId, inputId: inputId });
 
       if (inputId === '#audioUrl') clearAudioField();
@@ -223,11 +225,11 @@
   function getResolvedImageUrl() {
     var sel = ($('#imageSelect').val() || '').trim();
 
-    if (sel === 'custom') {
-      var custom = ($('#imageUrl').val() || '').trim();
-      var resolvedCustom = custom ? custom : window.AppConfig.defaultImageUrl;
-      logInfo('圖片來源為自訂網址', { input: custom, resolved: resolvedCustom });
-      return resolvedCustom;
+    if (sel === 'upload') {
+      var uploaded = ($('#imageUrl').val() || '').trim();
+      var resolvedUpload = uploaded || lastUploadedImageUrl || window.AppConfig.defaultImageUrl;
+      logInfo('圖片來源為上傳', { input: uploaded, resolved: resolvedUpload });
+      return resolvedUpload;
     }
 
     if (sel === 'auto' || !sel) {
@@ -289,16 +291,23 @@
 
     if (!imageUrl || imageUrl === window.AppConfig.defaultImageUrl) {
       $imageSelect.val('auto');
+      $('#imageUploadGroup').addClass('d-none');
       $('#imageUrl').addClass('d-none').val('');
+      $('#imageUploadName').val('');
       logInfo('圖片欄位已套用自動預設圖');
-    } else if (options.indexOf(imageFileName) >= 0) {
-      $imageSelect.val(imageFileName);
+    } else if (options.indexOf(imageUrl) >= 0 || options.indexOf(imageFileName) >= 0) {
+      $imageSelect.val(options.indexOf(imageUrl) >= 0 ? imageUrl : imageFileName);
+      $('#imageUploadGroup').addClass('d-none');
       $('#imageUrl').addClass('d-none').val('');
+      $('#imageUploadName').val('');
       logInfo('圖片欄位已套用固定選項', imageFileName);
     } else {
-      $imageSelect.val('custom');
+      $imageSelect.val('upload');
+      $('#imageUploadGroup').removeClass('d-none');
       $('#imageUrl').removeClass('d-none').val(imageUrl);
-      logInfo('圖片欄位已套用自訂網址', imageUrl);
+      $('#imageUploadName').val(window.AppConfig.getDisplayOnlyFileName(imageUrl));
+      lastUploadedImageUrl = imageUrl;
+      logInfo('圖片欄位已套用上傳網址', imageUrl);
     }
 
     $('#courseTitle').val(course.courseTitle || '');
@@ -317,7 +326,8 @@
 
     if ((course.audioUrl || '').trim()) {
       $('#audioMode').val('url');
-      $('#audioUrl').removeClass('d-none').val(window.AppConfig.getDisplayOnlyFileName(course.audioUrl));
+      $('#audioUploadGroup').removeClass('d-none');
+      $('#audioUrl').val(window.AppConfig.getDisplayOnlyFileName(course.audioUrl));
       lastAutoAudioFileName = window.AppConfig.getDisplayOnlyFileName(course.audioUrl || '');
       logInfo('錄音欄位已帶入檔名', {
         fileName: course.audioUrl,
@@ -325,14 +335,16 @@
       });
     } else {
       $('#audioMode').val('none');
-      $('#audioUrl').addClass('d-none').val('');
+      $('#audioUploadGroup').addClass('d-none');
+      $('#audioUrl').val('');
       lastAutoAudioFileName = '';
       logInfo('錄音欄位已清空');
     }
 
     if ((course.materialUrl || '').trim()) {
       $('#materialMode').val('url');
-      $('#materialUrl').removeClass('d-none').val(window.AppConfig.getDisplayOnlyFileName(course.materialUrl));
+      $('#materialUploadGroup').removeClass('d-none');
+      $('#materialUrl').val(window.AppConfig.getDisplayOnlyFileName(course.materialUrl));
       lastAutoMaterialFileName = window.AppConfig.getDisplayOnlyFileName(course.materialUrl || '');
       logInfo('教材欄位已帶入檔名', {
         fileName: course.materialUrl,
@@ -340,7 +352,8 @@
       });
     } else {
       $('#materialMode').val('none');
-      $('#materialUrl').addClass('d-none').val('');
+      $('#materialUploadGroup').addClass('d-none');
+      $('#materialUrl').val('');
       lastAutoMaterialFileName = '';
       logInfo('教材欄位已清空');
     }
@@ -448,21 +461,16 @@
       pageLength: 10,
       lengthMenu: [10, 25, 50, 100],
       responsive: true,
-      order: [[0, 'desc'], [1, 'desc']],
+      order: [[0, 'desc'], [2, 'desc'], [3, 'desc']],
       columnDefs: [
-        { targets: 0, responsivePriority: 2 },
-        { targets: 1, responsivePriority: 3 },
-        { targets: 2, responsivePriority: 5 },
-        { targets: 3, responsivePriority: 4 },
+        { targets: 0, responsivePriority: 3 },
+        { targets: 1, responsivePriority: 4 },
+        { targets: 2, responsivePriority: 2 },
+        { targets: 3, responsivePriority: 5 },
         { targets: 4, responsivePriority: 6 },
         { targets: 5, responsivePriority: 7 },
-        { targets: 6, responsivePriority: 1 },
-        { targets: 7, responsivePriority: 8 },
-        { targets: 8, responsivePriority: 9 },
-        { targets: 9, responsivePriority: 10 },
-        { targets: 10, responsivePriority: 11 },
-        { targets: 11, responsivePriority: 12 },
-        { targets: 12, responsivePriority: 13 }
+        { targets: 6, responsivePriority: 8 },
+        { targets: 7, responsivePriority: 1 }
       ]
     });
 
@@ -518,12 +526,13 @@
 
       var rowHtml =
         '<tr>' +
+          '<td>' + (c.isPinned === true ? '是' : '否') + '</td>' +
+          '<td>' + (c.isVisible === false ? '否' : '是') + '</td>' +
           '<td data-order="' + escapeHtml(dateOrder == null ? '' : String(dateOrder)) + '">' + escapeHtml(dateText) + '</td>' +
           '<td data-order="' + escapeHtml(timeOrder == null ? '' : String(timeOrder)) + '">' + escapeHtml(timeText) + '</td>' +
           '<td>' + escapeHtml(classText) + '</td>' +
           '<td>' + escapeHtml(c.courseTitle || '') + '</td>' +
           '<td>' + escapeHtml(instructorDisplay) + '</td>' +
-          '<td>' + escapeHtml(c.courseLocation || '') + '</td>' +
           '<td>' +
             '<div class="d-flex gap-2">' +
               '<button class="btn btn-secondary btn-sm js-edit" data-id="' + escapeHtml(c.id) + '" type="button">' +
@@ -534,12 +543,6 @@
               '</button>' +
             '</div>' +
           '</td>' +
-          '<td>' + (c.isPinned === true ? '是' : '否') + '</td>' +
-          '<td>' + (c.isVisible === false ? '否' : '是') + '</td>' +
-          '<td>' + escapeHtml(c.videoUrl || '') + '</td>' +
-          '<td>' + escapeHtml(c.audioUrl || '') + '</td>' +
-          '<td>' + escapeHtml(c.materialUrl || '') + '</td>' +
-          '<td>' + escapeHtml(c.imageUrl || '') + '</td>' +
         '</tr>';
 
       $tbody.append(rowHtml);
@@ -621,10 +624,13 @@
       var v = ($('#imageSelect').val() || '').trim();
       logInfo('圖片選項已變更', v);
 
-      if (v === 'custom') {
+      if (v === 'upload') {
+        $('#imageUploadGroup').removeClass('d-none');
         $('#imageUrl').removeClass('d-none');
       } else {
+        $('#imageUploadGroup').addClass('d-none');
         $('#imageUrl').addClass('d-none').val('');
+        $('#imageUploadName').val('');
       }
 
       renderPreview();
@@ -685,12 +691,83 @@
 
     $('#audioMode').on('change', function () {
       logInfo('錄音模式已切換', getModeValue('#audioMode'));
-      applyUrlMode('#audioMode', '#audioUrl');
+      applyUrlMode('#audioMode', '#audioUrl', '#audioUploadGroup');
     });
 
     $('#materialMode').on('change', function () {
       logInfo('教材模式已切換', getModeValue('#materialMode'));
-      applyUrlMode('#materialMode', '#materialUrl');
+      applyUrlMode('#materialMode', '#materialUrl', '#materialUploadGroup');
+    });
+
+    function getSynologyConfig() {
+      return {
+        baseUrl: ($('#synologyBaseUrl').val() || '').trim().replace(/\/+$/, ''),
+        sid: ($('#synologySid').val() || '').trim(),
+        uploadPath: ($('#synologyUploadPath').val() || '').trim() || '/home'
+      };
+    }
+
+    function bindUploadButton(buttonId, fileId, targetId, buildNameFn, afterUpload) {
+      $(buttonId).on('click', function () {
+        $(fileId).trigger('click');
+      });
+
+      $(fileId).on('change', function (e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        var course = readFormCourse(false);
+        var overrideName = buildNameFn ? buildNameFn(course, file.name) : file.name;
+
+        if (!window.UploadService || !window.UploadService.uploadToSynology) {
+          alert('找不到 upload.js，無法上傳檔案');
+          return;
+        }
+
+        var cfg = getSynologyConfig();
+        if (!cfg.baseUrl || !cfg.sid) {
+          alert('請先填寫 Synology Base URL 與 SID');
+          return;
+        }
+
+        window.UploadService.uploadToSynology(file, {
+          baseUrl: cfg.baseUrl,
+          sid: cfg.sid,
+          uploadPath: cfg.uploadPath,
+          fileName: overrideName
+        })
+          .then(function (result) {
+            $(targetId).val(result.fileName);
+            if (afterUpload) afterUpload(result);
+            renderPreview();
+            alert('上傳成功：' + result.fileName);
+          })
+          .catch(function (error) {
+            logError('Synology 上傳失敗', error);
+            alert('上傳失敗，請檢查 Synology API 設定');
+          })
+          .finally(function () {
+            $(fileId).val('');
+          });
+      });
+    }
+
+    bindUploadButton('#buttonUploadImage', '#imageFile', '#imageUrl', null, function (result) {
+      $('#imageUploadName').val(result.fileName);
+      $('#imageUrl').val(result.fullPath);
+      lastUploadedImageUrl = result.fullPath;
+    });
+
+    bindUploadButton('#buttonUploadVideo', '#videoFile', '#videoUrl', function (course, currentName) {
+      return buildAssetFileName(course, 'video', currentName);
+    });
+
+    bindUploadButton('#buttonUploadAudio', '#audioFile', '#audioUrl', function (course, currentName) {
+      return buildAssetFileName(course, 'audio', currentName);
+    });
+
+    bindUploadButton('#buttonUploadMaterial', '#materialFile', '#materialUrl', function (course, currentName) {
+      return buildAssetFileName(course, 'material', currentName);
     });
 
     $('#audioUrl').on('input change', function () {
@@ -729,13 +806,31 @@
         return;
       }
 
-      upsertCourse(course);
-      buildClassOptionsFromCourses();
-      renderList();
-      resetForm();
+      var endpoint = ($('#phpApiEndpoint').val() || '').trim();
+      var persistPromise = Promise.resolve();
 
-      logInfo('課程資料已儲存完成', course);
-      alert('已儲存');
+      if (endpoint) {
+        if (!window.UploadService || !window.UploadService.uploadCourseFormToPhp) {
+          alert('找不到 upload.js，無法寫入 PHP API');
+          return;
+        }
+
+        persistPromise = window.UploadService.uploadCourseFormToPhp(endpoint, course);
+      }
+
+      persistPromise
+        .then(function () {
+          upsertCourse(course);
+          buildClassOptionsFromCourses();
+          renderList();
+          resetForm();
+          logInfo('課程資料已儲存完成', course);
+          alert(endpoint ? '已儲存，且已送出至 PHP API' : '已儲存');
+        })
+        .catch(function (error) {
+          logError('PHP API 寫入失敗', error);
+          alert('儲存失敗：無法寫入 PHP API，請確認 endpoint 與伺服器');
+        });
     });
 
     $('#courseTable').on('click', '.js-edit', function () {
